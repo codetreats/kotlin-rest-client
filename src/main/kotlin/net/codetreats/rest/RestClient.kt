@@ -9,10 +9,26 @@ import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import java.lang.IllegalStateException
 
+/**
+ * The response of a request
+ * @param code the status code
+ * @param message the message body if available
+ */
 data class Response(val code: Int, val message: String?)
 
+/**
+ * A status code range
+ * @param fromInclusive from (including)
+ * @param toExclusive to (not included)
+ */
 data class StatusCodeRange(val fromInclusive: Int, val toExclusive: Int)
 
+/**
+ * The Rest client itself
+ * @param baseUrl the base url of the API it should connect to (aka the prefix which is added to all requests)
+ * @param defaultHeaders headers which are added to each request (e.g. authorization)
+ * @param allowedStatusCodes the code range for which the message should be returned. If the result is not in this range, an exception will be thrown
+ */
 class RestClient(
     private val baseUrl: String,
     private val defaultHeaders: Map<String, String> = emptyMap(),
@@ -28,15 +44,17 @@ class RestClient(
         url: String,
         params: Map<String, String> = emptyMap(),
         headers: Map<String, String> = emptyMap(),
-        body: String?
-    ) = request(HttpMethod.Post, url, params, headers, body)
+        body: String?,
+        contentType: ContentType = ContentType.Application.Json
+    ) = request(HttpMethod.Post, url, params, headers, body, contentType)
 
     fun put(
         url: String,
         params: Map<String, String> = emptyMap(),
         headers: Map<String, String> = emptyMap(),
-        body: String?
-    ) = request(HttpMethod.Put, url, params, headers, body)
+        body: String?,
+        contentType: ContentType = ContentType.Application.Json
+    ) = request(HttpMethod.Put, url, params, headers, body, contentType)
 
     fun delete(
         url: String,
@@ -49,7 +67,8 @@ class RestClient(
         url: String,
         params: Map<String, String>,
         headers: Map<String, String>,
-        body: String?
+        body: String?,
+        contentType: ContentType = ContentType.Application.Json
     ): Response = runBlocking {
         val client = HttpClient(CIO)
         val answer = client.request {
@@ -60,12 +79,12 @@ class RestClient(
                 defaultHeaders.forEach { (k, v) -> append(k, v) }
                 headers.forEach { (k, v) -> append(k, v) }
                 if (body != null) {
-                    append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    append(HttpHeaders.ContentType, contentType.toString())
                 }
             }
             params.forEach { (k, v) -> builder.parameter(k, v) }
             body?.let {
-                builder.setBody(TextContent(body, ContentType.Application.Json))
+                builder.setBody(TextContent(body, contentType))
             }
         }
         val statusCode = answer.status.value
