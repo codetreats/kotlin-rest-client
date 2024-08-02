@@ -6,15 +6,15 @@ plugins {
 }
 
 group = "net.codetreats"
-version = "0.0.2"
+version = "0.0.3"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    implementation("io.ktor:ktor-client-core:2.3.4")
-    implementation("io.ktor:ktor-client-cio:2.3.4")
+    api("io.ktor:ktor-client-core:2.3.4")
+    api("io.ktor:ktor-client-cio:2.3.4")
     implementation("io.ktor:ktor-client-logging:2.3.4")
 }
 
