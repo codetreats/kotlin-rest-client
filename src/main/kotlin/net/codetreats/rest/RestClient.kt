@@ -30,9 +30,9 @@ data class StatusCodeRange(val fromInclusive: Int, val toExclusive: Int)
  * @param allowedStatusCodes the code range for which the message should be returned. If the result is not in this range, an exception will be thrown
  */
 class RestClient(
-    private val baseUrl: String,
-    private val defaultHeaders: Map<String, String> = emptyMap(),
-    private val allowedStatusCodes: StatusCodeRange = StatusCodeRange(200, 300)
+    val baseUrl: String,
+    val defaultHeaders: Map<String, String> = emptyMap(),
+    val allowedStatusCodes: StatusCodeRange = StatusCodeRange(200, 300)
 ) {
     fun get(
         url: String,
@@ -70,29 +70,34 @@ class RestClient(
         body: String?,
         contentType: ContentType = ContentType.Application.Json
     ): Response = runBlocking {
-        val client = HttpClient(CIO)
-        val answer = client.request {
-            val builder = this
-            builder.method = method
-            builder.url(baseUrl + url)
-            builder.headers {
-                defaultHeaders.forEach { (k, v) -> append(k, v) }
-                headers.forEach { (k, v) -> append(k, v) }
-                if (body != null) {
-                    append(HttpHeaders.ContentType, contentType.toString())
+        val fullUrl = baseUrl + url
+        try {
+            val client = HttpClient(CIO)
+            val answer = client.request {
+                val builder = this
+                builder.method = method
+                builder.url(fullUrl)
+                builder.headers {
+                    defaultHeaders.forEach { (k, v) -> append(k, v) }
+                    headers.forEach { (k, v) -> append(k, v) }
+                    if (body != null) {
+                        append(HttpHeaders.ContentType, contentType.toString())
+                    }
+                }
+                params.forEach { (k, v) -> builder.parameter(k, v) }
+                body?.let {
+                    builder.setBody(TextContent(body, contentType))
                 }
             }
-            params.forEach { (k, v) -> builder.parameter(k, v) }
-            body?.let {
-                builder.setBody(TextContent(body, contentType))
+            val statusCode = answer.status.value
+            val text = answer.bodyAsText()
+            if (allowedStatusCodes.fromInclusive <= statusCode && statusCode < allowedStatusCodes.toExclusive) {
+                return@runBlocking Response(statusCode, text)
+            } else {
+                throw IllegalStateException("Received unexpected status code: $statusCode, $text")
             }
-        }
-        val statusCode = answer.status.value
-        val text = answer.bodyAsText()
-        if (allowedStatusCodes.fromInclusive <= statusCode && statusCode < allowedStatusCodes.toExclusive) {
-            return@runBlocking Response(statusCode, text)
-        } else {
-            throw IllegalStateException("Received unexpected status code: $statusCode, $text")
+        } catch (e : Exception) {
+            throw IllegalStateException("Cannot connect to $fullUrl: ${e.message} (Params: $params, Headers: $headers, Body-Length: ${body?.length})")
         }
     }
 }
