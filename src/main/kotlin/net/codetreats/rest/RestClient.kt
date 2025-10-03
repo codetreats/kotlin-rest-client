@@ -2,19 +2,21 @@ package net.codetreats.rest
 
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.content.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import java.lang.IllegalStateException
+import java.time.Duration
 
 /**
  * The response of a request
  * @param code the status code
  * @param message the message body if available
  */
-data class Response(val code: Int, val message: String?)
+data class Response(val code: Int, val message: String)
 
 /**
  * A status code range
@@ -28,11 +30,19 @@ data class StatusCodeRange(val fromInclusive: Int, val toExclusive: Int)
  * @param baseUrl the base url of the API it should connect to (aka the prefix which is added to all requests)
  * @param defaultHeaders headers which are added to each request (e.g. authorization)
  * @param allowedStatusCodes the code range for which the message should be returned. If the result is not in this range, an exception will be thrown
+ * @param client the HttpClient instance to use for making requests
  */
 class RestClient(
     val baseUrl: String,
     val defaultHeaders: Map<String, String> = emptyMap(),
-    val allowedStatusCodes: StatusCodeRange = StatusCodeRange(200, 300)
+    val allowedStatusCodes: StatusCodeRange = StatusCodeRange(200, 300),
+    val client: HttpClient = HttpClient(CIO) {
+        install(HttpTimeout) {
+            requestTimeoutMillis = Duration.ofSeconds(60).toMillis()
+            connectTimeoutMillis = Duration.ofSeconds(30).toMillis()
+            socketTimeoutMillis = Duration.ofSeconds(60).toMillis()
+        }
+    }
 ) {
     fun get(
         url: String,
@@ -72,7 +82,6 @@ class RestClient(
     ): Response = runBlocking {
         val fullUrl = baseUrl + url
         try {
-            val client = HttpClient(CIO)
             val answer = client.request {
                 val builder = this
                 builder.method = method
