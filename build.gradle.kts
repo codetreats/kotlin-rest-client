@@ -66,22 +66,10 @@ publishing {
     }
 
     repositories {
-        if (project.version.toString().endsWith("-SNAPSHOT")) {
-            configureRepo("snapshot", false)
-        } else {
-            configureRepo("release", true)
-        }
-    }
-}
-
-fun RepositoryHandler.configureRepo(type: String, secureProtocol: Boolean) {
-    maven {
-        this.name = type
-        this.url = uri(project.findProperty("$type.repo.url")!!.toString())
-        this.isAllowInsecureProtocol = !secureProtocol
-        credentials {
-            this.username = project.findProperty("$type.repo.user")!!.toString()
-            this.password = project.findProperty("$type.repo.password")!!.toString()
+        maven {
+            this.name = "repo"
+            this.url = uri(project.findProperty("repo.url")!!.toString())
+            this.isAllowInsecureProtocol = true
         }
     }
 }
