@@ -4,12 +4,15 @@ import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.content.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import java.lang.IllegalStateException
 import java.time.Duration
+import java.io.File
+import java.nio.file.Files
 
 /**
  * The response of a request
@@ -72,6 +75,54 @@ class RestClient(
         headers: Map<String, String> = emptyMap()
     ) = request(HttpMethod.Delete, url, params, headers, null)
 
+    fun postFile(
+        url: String,
+        params: Map<String, String> = emptyMap(),
+        headers: Map<String, String> = emptyMap(),
+        key: String,
+        file: File
+    ): Response = runBlocking {
+        val fullUrl = baseUrl + url
+        try {
+            val contentType = Files.probeContentType(file.toPath())
+                ?.let { ContentType.parse(it) }
+                ?: ContentType.Application.OctetStream
+            val answer: HttpResponse = client.submitFormWithBinaryData(
+                url = fullUrl,
+                formData = formData {
+                    append(
+                        key = key,
+                        value = file.readBytes(),
+                        headers = Headers.build {
+                            append(
+                                HttpHeaders.ContentDisposition,
+                                "form-data; name=\"file\"; filename=\"${file.name}\""
+                            )
+                            append(HttpHeaders.ContentType, contentType.toString())
+                        }
+                    )
+                }
+            ) {
+                val builder = this
+                builder.method = method
+                builder.headers {
+                    defaultHeaders.forEach { (k, v) -> append(k, v) }
+                    headers.forEach { (k, v) -> append(k, v) }
+                }
+                params.forEach { (k, v) -> builder.parameter(k, v) }
+            }
+            val statusCode = answer.status.value
+            val text = answer.bodyAsText()
+            if (allowedStatusCodes.fromInclusive <= statusCode && statusCode < allowedStatusCodes.toExclusive) {
+                return@runBlocking Response(statusCode, text)
+            } else {
+                throw IllegalStateException("Received unexpected status code: $statusCode, $text")
+            }
+        } catch (e: Exception) {
+            throw IllegalStateException("Cannot connect to $fullUrl: ${e.message} (Params: $params, Headers: $headers, Body: ${file.absolutePath})")
+        }
+    }
+
     private fun request(
         method: HttpMethod,
         url: String,
@@ -105,7 +156,7 @@ class RestClient(
             } else {
                 throw IllegalStateException("Received unexpected status code: $statusCode, $text")
             }
-        } catch (e : Exception) {
+        } catch (e: Exception) {
             throw IllegalStateException("Cannot connect to $fullUrl: ${e.message} (Params: $params, Headers: $headers, Body-Length: ${body?.length})")
         }
     }
