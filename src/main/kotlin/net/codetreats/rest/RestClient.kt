@@ -9,10 +9,10 @@ import io.ktor.client.statement.*
 import io.ktor.content.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
-import java.lang.IllegalStateException
-import java.time.Duration
 import java.io.File
+import java.lang.IllegalStateException
 import java.nio.file.Files
+import java.time.Duration
 
 /**
  * The response of a request
@@ -45,20 +45,17 @@ class RestClient(
             connectTimeoutMillis = Duration.ofSeconds(30).toMillis()
             socketTimeoutMillis = Duration.ofSeconds(60).toMillis()
         }
-    }
+    },
 ) {
-    fun get(
-        url: String,
-        params: Map<String, String> = emptyMap(),
-        headers: Map<String, String> = emptyMap()
-    ) = request(HttpMethod.Get, url, params, headers, null)
+    fun get(url: String, params: Map<String, String> = emptyMap(), headers: Map<String, String> = emptyMap()) =
+        request(HttpMethod.Get, url, params, headers, null)
 
     fun post(
         url: String,
         params: Map<String, String> = emptyMap(),
         headers: Map<String, String> = emptyMap(),
         body: String?,
-        contentType: ContentType = ContentType.Application.Json
+        contentType: ContentType = ContentType.Application.Json,
     ) = request(HttpMethod.Post, url, params, headers, body, contentType)
 
     fun put(
@@ -66,21 +63,18 @@ class RestClient(
         params: Map<String, String> = emptyMap(),
         headers: Map<String, String> = emptyMap(),
         body: String?,
-        contentType: ContentType = ContentType.Application.Json
+        contentType: ContentType = ContentType.Application.Json,
     ) = request(HttpMethod.Put, url, params, headers, body, contentType)
 
-    fun delete(
-        url: String,
-        params: Map<String, String> = emptyMap(),
-        headers: Map<String, String> = emptyMap()
-    ) = request(HttpMethod.Delete, url, params, headers, null)
+    fun delete(url: String, params: Map<String, String> = emptyMap(), headers: Map<String, String> = emptyMap()) =
+        request(HttpMethod.Delete, url, params, headers, null)
 
     fun postFile(
         url: String,
         params: Map<String, String> = emptyMap(),
         headers: Map<String, String> = emptyMap(),
         key: String,
-        file: File
+        file: File,
     ): Response = runBlocking {
         val fullUrl = baseUrl + url
         try {
@@ -96,12 +90,12 @@ class RestClient(
                         headers = Headers.build {
                             append(
                                 HttpHeaders.ContentDisposition,
-                                "form-data; name=\"file\"; filename=\"${file.name}\""
+                                "form-data; name=\"file\"; filename=\"${file.name}\"",
                             )
                             append(HttpHeaders.ContentType, contentType.toString())
-                        }
+                        },
                     )
-                }
+                },
             ) {
                 val builder = this
                 builder.method = method
@@ -120,7 +114,10 @@ class RestClient(
                 throw IllegalStateException("Received unexpected status code: $statusCode, $text")
             }
         } catch (e: Exception) {
-            throw IllegalStateException("Cannot connect to $fullUrl: ${e.message} (Params: $params, Headers: $headers, Body: ${file.absolutePath})")
+            throw IllegalStateException(
+                "Cannot connect to $fullUrl: ${e.message} " +
+                    "(Params: $params, Headers: $headers, Body: ${file.absolutePath})",
+            )
         }
     }
 
@@ -130,7 +127,7 @@ class RestClient(
         params: Map<String, String>,
         headers: Map<String, String>,
         body: String?,
-        contentType: ContentType = ContentType.Application.Json
+        contentType: ContentType = ContentType.Application.Json,
     ): Response = runBlocking {
         val fullUrl = baseUrl + url
         try {
@@ -159,7 +156,10 @@ class RestClient(
                 throw IllegalStateException("Received unexpected status code: $statusCode, $text")
             }
         } catch (e: Exception) {
-            throw IllegalStateException("Cannot connect to $fullUrl: ${e.message} (Params: $params, Headers: $headers, Body-Length: ${body?.length})")
+            throw IllegalStateException(
+                "Cannot connect to $fullUrl: ${e.message} " +
+                    "(Params: $params, Headers: $headers, Body-Length: ${body?.length})",
+            )
         }
     }
 }
